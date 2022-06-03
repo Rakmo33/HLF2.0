@@ -245,7 +245,7 @@ chaincodeInvoke() {
 
 
          ## Add private data
-        export CAR=$(echo -n "{\"key\":\"666\", \"make\":\"Tesla\",\"model\":\"Tesla A1\",\"color\":\"White\",\"owner\":\"pavan\",\"price\":\"10000\"}" | base64 | tr -d \\n)
+        export TRANSACTION=$(echo -n "{\"ID\":\"1\",\"FromBank\":\"BankA\",\"ToBank\":\"BankB\",\"Amount\":\"1000\",\"Status\":\"SUCCESS\",\"AddedAt\":\"Jun2\"}" | base64 | tr -d \\n)
         peer chaincode invoke -o localhost:7050 \
         --ordererTLSHostnameOverride orderer.example.com \
         --tls $CORE_PEER_TLS_ENABLED \
@@ -253,8 +253,8 @@ chaincodeInvoke() {
         -C $CHANNEL_NAME -n ${CC_NAME} \
         --peerAddresses localhost:7051 --tlsRootCertFiles $PEER0_ORG1_CA \
         --peerAddresses localhost:9051 --tlsRootCertFiles $PEER0_ORG2_CA \
-        -c '{"function": "CreatePrivateCar", "Args":[]}' \
-        --transient "{\"car\":\"$CAR\"}"
+        -c '{"function": "SetPrivateTransaction", "Args":["collectionTransactions-1-2"]}' \
+        --transient "{\"transaction\":\"$TRANSACTION\"}"
 
 }
 
@@ -281,7 +281,7 @@ chaincodeQuery() {
     setGlobalsForPeer0Org1
     # setGlobalsForOrg1
     # peer chaincode query -C $CHANNEL_NAME -n ${CC_NAME} -c '{"function": "GetCarById","Args":["1"]}'
-    peer chaincode query -C $CHANNEL_NAME -n ${CC_NAME} -c '{"function": "ReadPrivateCar","Args":["666"]}'
+    peer chaincode query -C $CHANNEL_NAME -n ${CC_NAME} -c '{"function": "ReadPrivateTransaction","Args":["collectionTransactions-1-2","1"]}'
 
 }
 
@@ -303,6 +303,6 @@ commitChaincodeDefination
 queryCommitted
 chaincodeInvokeInit
 sleep 5
-chaincodeInvoke
-sleep 3
-chaincodeQuery
+# chaincodeInvoke
+# sleep 3
+# chaincodeQuery
