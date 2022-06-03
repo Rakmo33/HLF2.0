@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	// "github.com/hyperledger/fabric-chaincode-go/shim"
+
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 	"github.com/hyperledger/fabric/common/flogging"
 )
@@ -34,7 +36,7 @@ type Transaction struct {
 	ToBank   string `json:"toBank"`
 	Amount   string `json:"amount"`
 	Status   string `json:"status"`
-	AddedAt  string `json:"addedAt"`
+	AddedAt  uint64 `json:"addedAt"`
 }
 
 type carPrivateDetails struct {
@@ -87,93 +89,125 @@ func (s *SmartContract) GetTransactionById(ctx contractapi.TransactionContextInt
 
 }
 
-//args[0] => privateCollectionName
-func (s *SmartContract) SetPrivateTransaction(ctx contractapi.TransactionContextInterface, args []string) (string, error) {
-
-	if len(args) != 1 {
-		return "", fmt.Errorf("Incorrect number of arguments. Expecting 1")
+func (s *SmartContract) CreatePrivateCar(ctx contractapi.TransactionContextInterface) (string, error) {
+	type carTransientInput struct {
+		Make  string `json:"make"` //the fieldtags are needed to keep case from bouncing around
+		Model string `json:"model"`
+		Color string `json:"color"`
+		Owner string `json:"owner"`
+		Price string `json:"price"`
+		Key   string `json:"key"`
 	}
+	// if len(args) != 0 {
+	// 	return "", fmt.Errorf("1111111----Incorrect number of arguments. Private marble data must be passed in transient map.")
+	// }
+
+	logger.Infof("11111111111111111111111111")
 
 	transMap, err := ctx.GetStub().GetTransient()
 	if err != nil {
-		return "", fmt.Errorf("Error getting transient: " + err.Error())
+
+		return "", fmt.Errorf("222222 -Error getting transient: " + err.Error())
 	}
 
-	transactionDataAsBytes, ok := transMap["transaction"]
+	carDataAsBytes, ok := transMap["car"]
 	if !ok {
-		return "", fmt.Errorf("transaction must be a key in the transient map")
+		return "", fmt.Errorf("car must be a key in the transient map")
 	}
-	logger.Infof(string(transactionDataAsBytes))
+	logger.Infof("********************8   " + string(carDataAsBytes))
 
-	if len(transactionDataAsBytes) == 0 {
-		return "", fmt.Errorf("Transaction value in the transient map must be a non-empty JSON string")
+	if len(carDataAsBytes) == 0 {
+		return "", fmt.Errorf("333333 -marble value in the transient map must be a non-empty JSON string")
 	}
 
-	var transactionInput Transaction
-	err = json.Unmarshal(transactionDataAsBytes, &transactionInput)
+	logger.Infof("2222222")
+
+	var carInput carTransientInput
+	err = json.Unmarshal(carDataAsBytes, &carInput)
 	if err != nil {
-		return "", fmt.Errorf("Failed to decode JSON of: " + string(transactionDataAsBytes) + "Error is : " + err.Error())
+		return "", fmt.Errorf("44444 -Failed to decode JSON of: " + string(carDataAsBytes) + "Error is : " + err.Error())
 	}
 
-	if len(transactionInput.ID) == 0 {
-		return "", fmt.Errorf("ID field must be a non-empty string")
+	logger.Infof("3333")
+
+	if len(carInput.Key) == 0 {
+		return "", fmt.Errorf("name field must be a non-empty string")
 	}
-	if len(transactionInput.FromBank) == 0 {
-		return "", fmt.Errorf("FromBank field must be a non-empty string")
+	if len(carInput.Make) == 0 {
+		return "", fmt.Errorf("color field must be a non-empty string")
 	}
-	if len(transactionInput.ToBank) == 0 {
-		return "", fmt.Errorf("ToBank field must be a non-empty string")
+	if len(carInput.Model) == 0 {
+		return "", fmt.Errorf("model field must be a non-empty string")
 	}
-	if len(transactionInput.Amount) == 0 {
-		return "", fmt.Errorf("Amount field must be a non-empty string")
+	if len(carInput.Color) == 0 {
+		return "", fmt.Errorf("color field must be a non-empty string")
 	}
-	if len(transactionInput.Status) == 0 {
-		return "", fmt.Errorf("Status field must be a non-empty string")
+	if len(carInput.Owner) == 0 {
+		return "", fmt.Errorf("owner field must be a non-empty string")
 	}
-	if len(transactionInput.AddedAt) == 0 {
-		return "", fmt.Errorf("AddedAt field must be a non-empty string")
+	if len(carInput.Price) == 0 {
+		return "", fmt.Errorf("price field must be a non-empty string")
 	}
 
-	// ==== Check if transaction already exists ====
-	transactionAsBytes, err := ctx.GetStub().GetPrivateData(args[0], transactionInput.ID)
+	logger.Infof("444444")
+
+	// ==== Check if car already exists ====
+	carAsBytes, err := ctx.GetStub().GetPrivateData("collectionCars", carInput.Key)
 	if err != nil {
-		return "", fmt.Errorf("Failed to get transaction: " + err.Error())
-	} else if transactionAsBytes != nil {
-		fmt.Println("This transaction already exists: " + transactionInput.ID)
-		return "", fmt.Errorf("This transaction already exists: " + transactionInput.ID)
+		return "", fmt.Errorf("Failed to get marble: " + err.Error())
+	} else if carAsBytes != nil {
+		fmt.Println("This car already exists: " + carInput.Key)
+		return "", fmt.Errorf("This car already exists: " + carInput.Key)
 	}
 
-	var transaction = Transaction{ID: transactionInput.ID,
-		FromBank: transactionInput.FromBank,
-		ToBank:   transactionInput.ToBank,
-		Amount:   transactionInput.Amount,
-		Status:   transactionInput.Status,
-		AddedAt:  transactionInput.AddedAt}
+	logger.Infof("55555")
 
-	transactionAsBytes, err = json.Marshal(transaction)
+	var car = Car{Make: carInput.Make, Model: carInput.Model, Color: carInput.Color, Owner: carInput.Owner}
+
+	carAsBytes, err = json.Marshal(car)
 	if err != nil {
 		return "", fmt.Errorf(err.Error())
 	}
-	return ctx.GetStub().GetTxID(), ctx.GetStub().PutPrivateData(args[0], transactionInput.ID, transactionAsBytes)
+	err = ctx.GetStub().PutPrivateData("collectionCars", carInput.Key, carAsBytes)
+	if err != nil {
+		logger.Infof("6666666")
+		return "", fmt.Errorf(err.Error())
+	}
+
+	carPrivateDetails := &carPrivateDetails{Owner: carInput.Owner, Price: carInput.Price}
+
+	carPrivateDetailsAsBytes, err := json.Marshal(carPrivateDetails)
+	if err != nil {
+		logger.Infof("77777")
+		return "", fmt.Errorf(err.Error())
+	}
+
+	// err = ctx.GetStub().PutPrivateData("collectionCarPrivateDetails", carInput.Key, carPrivateDetailsAsBytes)
+	// if err != nil {
+	// logger.Infof("888888")
+	// return "",fmt.Errorf(err.Error())
+	// }
+
+	return ctx.GetStub().GetTxID(), ctx.GetStub().PutPrivateData("collectionCarPrivateDetails", carInput.Key, carPrivateDetailsAsBytes)
 }
 
-func (s *SmartContract) ReadPrivateTransaction(ctx contractapi.TransactionContextInterface, args []string) (string, error) {
+func (s *SmartContract) ReadPrivateCar(ctx contractapi.TransactionContextInterface, args []string) (string, error) {
 
 	if len(args) != 2 {
 		return "", fmt.Errorf("Incorrect number of arguments. Expecting 2")
 	}
-	// collectionTransactions12
-	transactionAsBytes, err := ctx.GetStub().GetPrivateData(args[0], args[1])
+	// collectionCars, collectionCarPrivateDetails, _implicit_org_Org1MSP, _implicit_org_Org2MSP
+	carAsBytes, err := ctx.GetStub().GetPrivateData(args[0], args[1])
 	if err != nil {
 		jsonResp := "{\"Error\":\"Failed to get private details for " + args[1] + ": " + err.Error() + "\"}"
 		return "", fmt.Errorf(jsonResp)
 
-	} else if transactionAsBytes == nil {
-		jsonResp := "{\"Error\":\"Transaction private details does not exist: " + args[1] + "\"}"
+	} else if carAsBytes == nil {
+		jsonResp := "{\"Error\":\"Car private details does not exist: " + args[1] + "\"}"
 		return "", fmt.Errorf(jsonResp)
 
 	}
-	return string(transactionAsBytes), nil
+	return string(carAsBytes), nil
 }
 
 // custom functions end
